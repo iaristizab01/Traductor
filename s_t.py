@@ -7,32 +7,36 @@ from PIL import Image
 import time
 import glob
 from gtts import gTTS
-from deep_translator import GoogleTranslator  # ✅ reemplazo estable
+from deep_translator import GoogleTranslator
 
 
-# 🌹 Interfaz
-st.title("💌 El Traductor del Corazón")
-st.subheader("Donde las palabras cruzan fronteras... y corazones.")
+# 🌍 Interfaz principal
+st.title("🌎 Traductor de Destinos")
+st.subheader("Habla, y te traducirá al idioma del lugar al que estás destinado a ir.")
 
+# Imagen principal
 image = Image.open("OIG7.jpg")
 st.image(image, width=300)
 
 with st.sidebar:
-    st.markdown("### 💞 Modo romántico activado")
-    st.write("Habla desde el corazón. Este traductor convierte tus emociones "
-             "en mensajes que puedan entenderse en cualquier idioma.")
-    st.caption("✨ Consejo: mientras más sincero seas, más hermoso será el resultado.")
+    st.subheader("🧭 Modo viajero")
+    st.write(
+        "Presiona el botón y di algo. "
+        "El traductor convertirá tus palabras al idioma del país que elijas, "
+        "para que llegues preparado donde sea que te lleve el destino."
+    )
+    st.caption("✨ Consejo: imagina que estás a punto de aterrizar en tu próxima aventura.")
 
-st.write("Presiona el botón y confiesa tu mensaje de amor 💬")
+st.write("Presiona el botón y di algo para traducirlo al idioma de tu próximo destino 🌐")
 
-# 🎙️ Botón de voz
-stt_button = Button(label="💖 Susurrar al micrófono", width=300, height=50)
+# 🎙️ Botón de reconocimiento de voz
+stt_button = Button(label="🎤 Hablar", width=300, height=50)
 
 stt_button.js_on_event("button_click", CustomJS(code="""
     var recognition = new webkitSpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
- 
+
     recognition.onresult = function (e) {
         var value = "";
         for (var i = e.resultIndex; i < e.results.length; ++i) {
@@ -45,7 +49,7 @@ stt_button.js_on_event("button_click", CustomJS(code="""
         }
     }
     recognition.start();
-    """))
+"""))
 
 result = streamlit_bokeh_events(
     stt_button,
@@ -56,62 +60,63 @@ result = streamlit_bokeh_events(
     debounce_time=0
 )
 
-# 🪶 Traducción romántica
+# ✈️ Traducción de voz
 if result and "GET_TEXT" in result:
     original_text = result.get("GET_TEXT")
-    st.success(f"💬 Tu mensaje: *{original_text}*")
+    st.success(f"🗣️ Tu frase: *{original_text}*")
 
     try:
         os.mkdir("temp")
     except:
         pass
 
-    in_lang = st.selectbox("🌍 Lenguaje de entrada", ("Español", "Inglés", "Francés", "Italiano"))
-    out_lang = st.selectbox("💘 Lenguaje del corazón (salida)", ("Inglés", "Francés", "Italiano", "Japonés"))
+    # Selección de idioma de entrada
+    in_lang = st.selectbox(
+        "🌍 Idioma actual (lo que estás hablando)",
+        ("Español", "Inglés", "Francés", "Italiano")
+    )
 
-    # Diccionarios de códigos
+    # Idioma de destino (donde el usuario “viaja”)
+    out_lang = st.selectbox(
+        "🧳 Idioma del destino (donde estás por ir)",
+        ("Inglés", "Francés", "Italiano", "Japonés", "Alemán", "Portugués")
+    )
+
+    # Diccionario de códigos ISO
     lang_codes = {
-        "Español": "es", "Inglés": "en", "Francés": "fr", "Italiano": "it", "Japonés": "ja"
+        "Español": "es",
+        "Inglés": "en",
+        "Francés": "fr",
+        "Italiano": "it",
+        "Japonés": "ja",
+        "Alemán": "de",
+        "Portugués": "pt"
     }
 
     input_language = lang_codes[in_lang]
     output_language = lang_codes[out_lang]
 
-    def text_to_love(input_language, output_language, text):
-        # ✅ deep-translator reemplaza a googletrans
-        translated_text = GoogleTranslator(source=input_language, target=output_language).translate(text)
-
-        # Pequeño toque poético 💫
-        love_quotes = [
-            "El amor no necesita traducción, solo intención.",
-            "Cada palabra que cruzó el idioma fue un suspiro del alma.",
-            "Tu voz viajó más lejos que cualquier carta de amor.",
-            "A veces traducir es otra forma de decir 'te pienso'."
-        ]
-        import random
-        poetic_line = random.choice(love_quotes)
-
-        tts = gTTS(translated_text, lang=output_language)
+    def translate_and_speak(src_lang, dest_lang, text):
+        translated = GoogleTranslator(source=src_lang, target=dest_lang).translate(text)
+        tts = gTTS(translated, lang=dest_lang)
         filename = f"temp/{text[:15]}.mp3"
         tts.save(filename)
+        return translated, filename
 
-        return filename, translated_text, poetic_line
-
-    if st.button("✨ Traducir mi sentimiento"):
-        filename, translated, poetic = text_to_love(input_language, output_language, original_text)
-        st.audio(filename)
-        st.markdown(f"### 💞 Traducción:")
+    if st.button("🌐 Traducir mi mensaje"):
+        translated, filename = translate_and_speak(input_language, output_language, original_text)
+        st.markdown(f"### ✈️ Traducción en {out_lang}:")
         st.markdown(f"**{translated}**")
-        st.caption(f"💬 {poetic}")
+        st.audio(filename)
 
-    # Limpieza de archivos antiguos
-    def remove_files(n):
+    # Limpieza automática
+    def remove_old_audio(days):
         mp3_files = glob.glob("temp/*.mp3")
         if len(mp3_files) != 0:
             now = time.time()
-            n_days = n * 86400
+            n_days = days * 86400
             for f in mp3_files:
                 if os.stat(f).st_mtime < now - n_days:
                     os.remove(f)
 
-    remove_files(3)
+    remove_old_audio(3)
